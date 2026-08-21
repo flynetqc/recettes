@@ -33,7 +33,7 @@ export function compileGroceryList(
 
       if (!rawMap.has(normalizedKey)) {
         rawMap.set(normalizedKey, {
-          id: `item-${normalizedKey}-${Math.random().toString(36).substr(2, 6)}`,
+          id: `item-${normalizedKey}`,
           name: ing.name,
           raw_quantity: scaledQty,
           unit: ing.unit || '',

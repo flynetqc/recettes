@@ -29,7 +29,15 @@ export function GroceryPlanner() {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [customItems, setCustomItems] = useState<{ id: string; name: string; quantity_str: string; aisle: GroceryAisle; checked: boolean }[]>([]);
-  const [checkedItemIds, setCheckedItemIds] = useState<Record<string, boolean>>({});
+  const [checkedItemIds, setCheckedItemIds] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('recettes_checked_items_v1');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Search & add recipe modal state
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
@@ -124,10 +132,18 @@ export function GroceryPlanner() {
   };
 
   const handleToggleCheck = (itemId: string) => {
-    setCheckedItemIds(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
+    setCheckedItemIds(prev => {
+      const next = {
+        ...prev,
+        [itemId]: !prev[itemId]
+      };
+      try {
+        localStorage.setItem('recettes_checked_items_v1', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
   };
 
   // Compile Grocery List
