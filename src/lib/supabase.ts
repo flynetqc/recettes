@@ -3,8 +3,16 @@ import { Recipe, WeeklyMealPlan, PurchaseRule } from './types';
 import { INITIAL_RECIPES } from './mock-data';
 import { DEFAULT_PURCHASE_RULES, getPurchaseRules, savePurchaseRules } from './purchase-rules';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 
+  process.env.SUPABASE_URL || 
+  '';
+
+const supabaseAnonKey = 
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
+  process.env.SUPABASE_ANON_KEY || 
+  '';
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
