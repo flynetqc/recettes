@@ -300,7 +300,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="ex: Poulet rôti au citron et romarin"
-              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-base font-medium text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-base font-medium text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
             />
           </div>
 
@@ -314,7 +314,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Court résumé, arômes, conseils du chef..."
-              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
             />
           </div>
 
@@ -326,7 +326,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as Category)}
-              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
             >
               {CATEGORIES.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -342,7 +342,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
             >
               <option value="Facile">Facile</option>
               <option value="Moyen">Moyen</option>
@@ -361,7 +361,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                 min="0"
                 value={prepTime}
                 onChange={(e) => setPrepTime(parseInt(e.target.value) || 0)}
-                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
               />
               <Clock className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
             </div>
@@ -378,7 +378,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                 min="0"
                 value={cookTime}
                 onChange={(e) => setCookTime(parseInt(e.target.value) || 0)}
-                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
               />
               <Flame className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
             </div>
@@ -396,7 +396,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                 max="50"
                 value={servings}
                 onChange={(e) => setServings(parseInt(e.target.value) || 1)}
-                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+                className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 pl-10 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
               />
               <Users className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
             </div>
@@ -428,7 +428,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               placeholder="ex: Poulet, Érable, Rapide, Sans gluten"
-              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+              className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
             />
           </div>
 
@@ -474,7 +474,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="Ou collez l'URL d'une photo en ligne (https://...)"
-                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2 text-xs text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50/50 px-4 py-2 text-xs text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-50 dark:focus:bg-zinc-800"
                 />
               </div>
             </div>
@@ -526,7 +526,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                       e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
                 />
               </div>
 
@@ -538,7 +538,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                   list="units-list"
                   value={ing.unit}
                   onChange={(e) => handleUpdateIngredient(index, 'unit', e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
                 />
                 <datalist id="units-list">
                   {COMMON_UNITS.map(u => (
@@ -555,7 +555,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                   placeholder="Nom de l'ingrédient (ex: Beurre doux, Blancs de poulet)"
                   value={ing.name}
                   onChange={(e) => handleUpdateIngredient(index, 'name', e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
                 />
               </div>
 
@@ -620,7 +620,7 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                 placeholder={`Décrivez l'étape ${index + 1}...`}
                 value={step.instruction}
                 onChange={(e) => handleUpdateStep(index, e.target.value)}
-                className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
               />
 
               <button
