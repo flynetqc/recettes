@@ -189,7 +189,8 @@ export function GroceryPlanner() {
   };
 
   const selectedRecipesList = allRecipes.filter(r => selectedRecipeIds.includes(r.id));
-  const progressPercent = totalItemsCount > 0 ? Math.round((completedItemsCount / totalItemsCount) * 100) : 0;
+  const itemsAtHomeCount = completedItemsCount;
+  const itemsToBuyCount = totalItemsCount - itemsAtHomeCount;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-20">
@@ -206,7 +207,7 @@ export function GroceryPlanner() {
               Menu de la semaine & Liste d&apos;épicerie
             </h1>
             <p className="mt-1 max-w-xl text-sm text-emerald-100">
-              Choisissez vos recettes, ajustez les portions et obtenez une liste complète avec formats d&apos;achat recommandés (ex: 1 livre de beurre) prête à exporter en PDF.
+              Sélectionnez vos recettes, ajustez les portions et <strong>cochez ce que vous avez déjà à la maison</strong> pour l&apos;exclure automatiquement de votre liste d&apos;épicerie et du PDF.
             </p>
           </div>
 
@@ -217,17 +218,17 @@ export function GroceryPlanner() {
               className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-md hover:bg-emerald-50 active:scale-95 transition-all"
             >
               <Plus className="h-4 w-4 text-emerald-600" />
-              <span>Ajouter des recettes ({selectedRecipeIds.length})</span>
+              <span>Recettes au menu ({selectedRecipeIds.length})</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportPdf}
-              disabled={totalItemsCount === 0}
+              disabled={itemsToBuyCount === 0}
               className="flex items-center gap-2 rounded-2xl bg-emerald-900/40 border border-white/20 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-900/60 active:scale-95 transition-all disabled:opacity-40"
             >
               <FileDown className="h-4 w-4" />
-              <span>Exporter en PDF</span>
+              <span>Exporter en PDF ({itemsToBuyCount} à acheter)</span>
             </button>
           </div>
         </div>
@@ -355,32 +356,34 @@ export function GroceryPlanner() {
               <div>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5 text-emerald-600" />
-                  Articles à acheter ({totalItemsCount})
+                  Articles requis ({totalItemsCount})
                 </h2>
-                <p className="text-xs text-zinc-500">
-                  {completedItemsCount} sur {totalItemsCount} articles cochés
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    🛒 {itemsToBuyCount} à acheter (inclus dans le PDF)
+                  </span>
+                  <span className="text-zinc-400">•</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">
+                    🏠 {itemsAtHomeCount} déjà à la maison (exclus du PDF)
+                  </span>
+                </div>
               </div>
 
-              {completedItemsCount > 0 && (
+              {itemsAtHomeCount > 0 && (
                 <button
                   type="button"
                   onClick={handleResetChecklist}
                   className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Décocher tout</span>
+                  <span>Tout marquer à acheter</span>
                 </button>
               )}
             </div>
 
-            {/* Progress Bar */}
-            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-              <div
-                className="h-full bg-emerald-500 transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              💡 <em>Cochez les ingrédients que vous possédez déjà dans vos armoires/réfrigérateur. Seuls les ingrédients <strong>non cochés</strong> seront inclus dans votre export PDF.</em>
+            </p>
           </div>
 
           {/* Aisles */}
@@ -399,6 +402,8 @@ export function GroceryPlanner() {
               const items = itemsByAisle[aisle];
               if (!items || items.length === 0) return null;
 
+              const aisleToBuyCount = items.filter(i => !i.checked).length;
+
               return (
                 <div
                   key={aisle}
@@ -410,7 +415,7 @@ export function GroceryPlanner() {
                       {aisle}
                     </h3>
                     <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {items.length} {items.length > 1 ? 'articles' : 'article'}
+                      {aisleToBuyCount} à acheter / {items.length} total
                     </span>
                   </div>
 
@@ -421,7 +426,7 @@ export function GroceryPlanner() {
                         onClick={() => handleToggleCheck(item.id)}
                         className={`flex items-start justify-between gap-3 rounded-2xl border p-3.5 transition-all cursor-pointer ${
                           item.checked
-                            ? 'border-zinc-200 bg-zinc-50/50 opacity-60 dark:border-zinc-800 dark:bg-zinc-900/50'
+                            ? 'border-zinc-200 bg-zinc-50/50 opacity-50 dark:border-zinc-800 dark:bg-zinc-900/40'
                             : 'border-zinc-200/70 bg-white hover:border-emerald-500/40 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-800/40'
                         }`}
                       >
@@ -438,15 +443,27 @@ export function GroceryPlanner() {
                           </button>
 
                           <div className="min-w-0 flex-1">
-                            <span
-                              className={`block font-semibold text-sm ${
-                                item.checked
-                                  ? 'line-through text-zinc-400 dark:text-zinc-500'
-                                  : 'text-zinc-900 dark:text-zinc-50'
-                              }`}
-                            >
-                              {item.name}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`font-semibold text-sm ${
+                                  item.checked
+                                    ? 'line-through text-zinc-400 dark:text-zinc-500'
+                                    : 'text-zinc-900 dark:text-zinc-50'
+                                }`}
+                              >
+                                {item.name}
+                              </span>
+
+                              {item.checked ? (
+                                <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                  ✓ Déjà à la maison (exclu du PDF)
+                                </span>
+                              ) : (
+                                <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                                  À acheter
+                                </span>
+                              )}
+                            </div>
 
                             {/* Source recipes info */}
                             {item.recipes_sources.length > 0 && (
@@ -465,12 +482,12 @@ export function GroceryPlanner() {
                         {/* Quantities & Packaging rule highlight */}
                         <div className="flex flex-col items-end shrink-0">
                           {/* Recipe needed amount */}
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          <span className={`text-xs font-semibold ${item.checked ? 'line-through text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
                             Besoin : {item.display_quantity_str}
                           </span>
 
                           {/* Admin Packaging Rule Highlight (ex: 1 livre de beurre) */}
-                          {item.purchase_package_label && (
+                          {!item.checked && item.purchase_package_label && (
                             <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
                               <Package className="h-3 w-3" />
                               {item.purchase_package_label}

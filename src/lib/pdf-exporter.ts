@@ -69,12 +69,13 @@ export function exportGroceryListPdf({
     currentY += splitText.length * 5 + 6;
   }
 
-  // Iterate over aisles and print tables
+  // Iterate over aisles and print tables for items to buy only
   const aisles = Object.keys(itemsByAisle) as GroceryAisle[];
 
   for (const aisle of aisles) {
-    const items = itemsByAisle[aisle];
-    if (!items || items.length === 0) continue;
+    // Only include items that are NOT checked (not already at home)
+    const itemsToBuy = (itemsByAisle[aisle] || []).filter(item => !item.checked);
+    if (itemsToBuy.length === 0) continue;
 
     // Check if we need a new page
     if (currentY > 250) {
@@ -86,10 +87,10 @@ export function exportGroceryListPdf({
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
-    doc.text(`▸ ${aisle} (${items.length})`, 14, currentY);
+    doc.text(`▸ ${aisle} (${itemsToBuy.length})`, 14, currentY);
     currentY += 3;
 
-    const tableRows = items.map(item => {
+    const tableRows = itemsToBuy.map(item => {
       let formatAchat = '-';
       if (item.purchase_package_label) {
         formatAchat = item.purchase_package_label.replace('Acheter : ', '');
@@ -103,7 +104,7 @@ export function exportGroceryListPdf({
       }
 
       return [
-        item.checked ? '[X]' : '[  ]',
+        '[  ]',
         item.name,
         item.display_quantity_str || '-',
         formatAchat,
@@ -113,7 +114,7 @@ export function exportGroceryListPdf({
 
     autoTable(doc, {
       startY: currentY,
-      head: [['État', 'Article', 'Quantité recette', 'Format d\'achat suggéré', 'Recettes associées']],
+      head: [['', 'Article à acheter', 'Quantité recette', 'Format d\'achat suggéré', 'Recette']],
       body: tableRows,
       theme: 'striped',
       headStyles: {

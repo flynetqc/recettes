@@ -330,44 +330,6 @@ export function PurchaseRulesManager() {
         </div>
       </div>
 
-      {/* Supabase & Hosting Deployment Guide Card */}
-      <div className="rounded-3xl border border-zinc-200/80 bg-white p-6 sm:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-4">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-          <Database className="h-5 w-5 text-emerald-600" />
-          Statut Supabase, GitHub & Vercel
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          {/* Supabase status */}
-          <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-zinc-700 dark:text-zinc-300">Base de données Supabase</span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                isConfigured 
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-              }`}>
-                {isConfigured ? <Cloud className="h-3 w-3" /> : <HardDrive className="h-3 w-3" />}
-                {isConfigured ? 'Connecté Cloud' : 'Mode Local / Démo'}
-              </span>
-            </div>
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              Pour connecter votre projet Supabase, ajoutez <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-[10px]">NEXT_PUBLIC_SUPABASE_URL</code> et <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-[10px]">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> dans votre fichier <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-[10px]">.env.local</code> et exécutez le script SQL fourni dans <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-[10px]">supabase/schema.sql</code>.
-            </p>
-          </div>
-
-          {/* Vercel & Github status */}
-          <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 space-y-2">
-            <span className="font-bold text-xs text-zinc-700 dark:text-zinc-300">Déploiement Vercel & GitHub</span>
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              Le projet est structuré avec Next.js 14+ App Router standard. Il suffit de pousser ce dépôt sur GitHub et d&apos;importer le projet dans Vercel avec vos variables Supabase pour un hébergement gratuit et automatique !
-            </p>
-          </div>
-
-        </div>
-      </div>
-
     </div>
   );
 }
