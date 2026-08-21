@@ -21,7 +21,7 @@ export function exportGroceryListPdf({
   const darkColor: [number, number, number] = [31, 41, 55]; // Gray 800
   const mutedColor: [number, number, number] = [107, 114, 128]; // Gray 500
 
-  // Header
+  // Header Banner
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 24, 'F');
 
@@ -78,23 +78,23 @@ export function exportGroceryListPdf({
     if (itemsToBuy.length === 0) continue;
 
     // Check if we need a new page
-    if (currentY > 250) {
+    if (currentY > 240) {
       doc.addPage();
       currentY = 20;
     }
 
-    // Aisle Section Title
+    // Aisle Section Title (clean standard characters without special unicode glyphs)
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
-    doc.text(`▸ ${aisle} (${itemsToBuy.length})`, 14, currentY);
+    doc.text(`${aisle} (${itemsToBuy.length})`, 14, currentY);
     currentY += 3;
 
     const tableRows = itemsToBuy.map(item => {
-      let formatAchat = '-';
-      if (item.purchase_package_label) {
-        formatAchat = item.purchase_package_label.replace('Acheter : ', '');
-      }
+      // Prioritize standard packaging rule (ex: 1 sac de 3 livres) or display quantity
+      const qteAAcheter = item.purchase_package_label
+        ? item.purchase_package_label.replace('Acheter : ', '')
+        : item.display_quantity_str || '1 unité';
 
       let sourceRecipes = '';
       if (item.recipes_sources.length > 0) {
@@ -106,33 +106,31 @@ export function exportGroceryListPdf({
       return [
         '[  ]',
         item.name,
-        item.display_quantity_str || '-',
-        formatAchat,
+        qteAAcheter,
         sourceRecipes
       ];
     });
 
     autoTable(doc, {
       startY: currentY,
-      head: [['', 'Article à acheter', 'Quantité recette', 'Format d\'achat suggéré', 'Recette']],
+      head: [['', 'Article à acheter', 'Quantité à acheter', 'Recettes associées']],
       body: tableRows,
       theme: 'striped',
       headStyles: {
         fillColor: [243, 244, 246],
         textColor: [55, 65, 81],
         fontStyle: 'bold',
-        fontSize: 8.5
+        fontSize: 9
       },
       bodyStyles: {
-        fontSize: 8.5,
+        fontSize: 9,
         textColor: [31, 41, 55]
       },
       columnStyles: {
-        0: { cellWidth: 14, halign: 'center' },
-        1: { cellWidth: 50, fontStyle: 'bold' },
-        2: { cellWidth: 32 },
-        3: { cellWidth: 42, textColor: [16, 185, 129], fontStyle: 'bold' },
-        4: { cellWidth: 'auto', textColor: [107, 114, 128] }
+        0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+        1: { cellWidth: 60, fontStyle: 'bold' },
+        2: { cellWidth: 50, fontStyle: 'bold', textColor: [16, 185, 129] },
+        3: { cellWidth: 'auto', textColor: [107, 114, 128] }
       },
       margin: { left: 14, right: 14 },
       didDrawPage: (data) => {
@@ -148,7 +146,7 @@ export function exportGroceryListPdf({
     doc.setFontSize(8);
     doc.setTextColor(156, 163, 175);
     doc.text(
-      `Page ${i} sur ${pageCount} — Application Mes Recettes Gourmandes`,
+      `Page ${i} sur ${pageCount} — Mes Recettes Gourmandes`,
       105,
       290,
       { align: 'center' }
