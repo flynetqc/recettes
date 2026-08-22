@@ -33,7 +33,9 @@ import {
   History,
   Archive,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Edit2,
+  X
 } from 'lucide-react';
 
 export function GroceryPlanner() {
@@ -50,6 +52,20 @@ export function GroceryPlanner() {
       return {};
     }
   });
+
+  // Quantity Overrides state (allows user to click any item and change its quantity)
+  const [quantityOverrides, setQuantityOverrides] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('recettes_qty_overrides_v1');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingQtyValue, setEditingQtyValue] = useState<string>('');
 
   // Modals state
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
@@ -176,7 +192,46 @@ export function GroceryPlanner() {
     });
   };
 
-  // Compile Grocery List
+  // Quantity Editing handlers
+  const handleStartEditQty = (itemId: string, currentQtyStr: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItemId(itemId);
+    setEditingQtyValue(quantityOverrides[itemId] || currentQtyStr || '1');
+  };
+
+  const handleSaveQtyOverride = (itemId: string, e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.stopPropagation();
+    if (!editingQtyValue.trim()) return;
+
+    const next = {
+      ...quantityOverrides,
+      [itemId]: editingQtyValue.trim()
+    };
+    setQuantityOverrides(next);
+    try {
+      localStorage.setItem('recettes_qty_overrides_v1', JSON.stringify(next));
+    } catch (err) {
+      console.error(err);
+    }
+    setEditingItemId(null);
+  };
+
+  const handleResetQtyOverride = (itemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = { ...quantityOverrides };
+    delete next[itemId];
+    setQuantityOverrides(next);
+    try {
+      localStorage.setItem('recettes_qty_overrides_v1', JSON.stringify(next));
+    } catch (err) {
+      console.error(err);
+    }
+    if (editingItemId === itemId) {
+      setEditingItemId(null);
+    }
+  };
+
+  // Compile Grocery List with Quantity Overrides applied
   const { itemsByAisle, totalItemsCount, completedItemsCount, recipeSummary } = useMemo(() => {
     const rules = getPurchaseRules();
     const compiled = compileGroceryList(
@@ -187,7 +242,7 @@ export function GroceryPlanner() {
       rules
     );
 
-    // Apply checked state
+    // Apply checked state and quantity overrides
     const aisles = Object.keys(compiled.itemsByAisle) as GroceryAisle[];
     let checkedCount = 0;
 
@@ -197,6 +252,12 @@ export function GroceryPlanner() {
           item.checked = true;
           checkedCount++;
         }
+
+        // Apply custom quantity override if set by user
+        if (quantityOverrides[item.id]) {
+          item.display_quantity_str = quantityOverrides[item.id];
+          item.purchase_package_label = `Acheter : ${quantityOverrides[item.id]}`;
+        }
       }
     }
 
@@ -204,7 +265,7 @@ export function GroceryPlanner() {
       ...compiled,
       completedItemsCount: checkedCount
     };
-  }, [allRecipes, selectedRecipeIds, multipliers, customItems, checkedItemIds]);
+  }, [allRecipes, selectedRecipeIds, multipliers, customItems, checkedItemIds, quantityOverrides]);
 
   const handleExportPdf = () => {
     exportGroceryListPdf({
@@ -251,6 +312,10 @@ export function GroceryPlanner() {
     // 2. Reset active week completely
     persistPlan([], {}, []);
     handleResetChecklist();
+    setQuantityOverrides({});
+    try {
+      localStorage.removeItem('recettes_qty_overrides_v1');
+    } catch {}
     setIsNewWeekModalOpen(false);
   };
 
@@ -504,7 +569,7 @@ export function GroceryPlanner() {
             </div>
 
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              💡 <em>Cochez les ingrédients que vous possédez déjà dans vos armoires/réfrigérateur. Seuls les ingrédients <strong>non cochés</strong> seront inclus dans votre export PDF.</em>
+              💡 <em>Cochez les ingrédients que vous possédez déjà pour les exclure. Cliquez sur une quantité pour la personnaliser au besoin !</em>
             </p>
           </div>
 
@@ -542,97 +607,176 @@ export function GroceryPlanner() {
                   </div>
 
                   <div className="space-y-2">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleToggleCheck(item.id)}
-                        className={`flex items-start justify-between gap-3 rounded-2xl border p-3.5 transition-all cursor-pointer ${
-                          item.checked
-                            ? 'border-zinc-200 bg-zinc-50/50 opacity-50 dark:border-zinc-800 dark:bg-zinc-900/40'
-                            : 'border-zinc-200/70 bg-white hover:border-emerald-500/40 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-800/40'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <button
-                            type="button"
-                            className="mt-0.5 shrink-0 text-emerald-600 focus:outline-none"
-                          >
-                            {item.checked ? (
-                              <CheckSquare className="h-5 w-5 fill-emerald-600 text-white" />
-                            ) : (
-                              <Square className="h-5 w-5 text-zinc-400 hover:text-emerald-600" />
-                            )}
-                          </button>
+                    {items.map((item) => {
+                      const isEditing = editingItemId === item.id;
+                      const hasCustomQty = Boolean(quantityOverrides[item.id]);
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span
-                                className={`font-semibold text-sm ${
-                                  item.checked
-                                    ? 'line-through text-zinc-400 dark:text-zinc-500'
-                                    : 'text-zinc-900 dark:text-zinc-50'
-                                }`}
-                              >
-                                {item.name}
-                              </span>
-
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleToggleCheck(item.id)}
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border p-3.5 transition-all cursor-pointer ${
+                            item.checked
+                              ? 'border-zinc-200 bg-zinc-50/50 opacity-50 dark:border-zinc-800 dark:bg-zinc-900/40'
+                              : 'border-zinc-200/70 bg-white hover:border-emerald-500/40 hover:bg-emerald-50/20 dark:border-zinc-800 dark:bg-zinc-800/40'
+                          }`}
+                        >
+                          {/* Left: Checkbox & Name */}
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <button
+                              type="button"
+                              className="mt-0.5 shrink-0 text-emerald-600 focus:outline-none"
+                            >
                               {item.checked ? (
-                                <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                                  ✓ Déjà à la maison (exclu du PDF)
-                                </span>
+                                <CheckSquare className="h-5 w-5 fill-emerald-600 text-white" />
                               ) : (
-                                <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
-                                  À acheter
+                                <Square className="h-5 w-5 text-zinc-400 hover:text-emerald-600" />
+                              )}
+                            </button>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`font-semibold text-sm ${
+                                    item.checked
+                                      ? 'line-through text-zinc-400 dark:text-zinc-500'
+                                      : 'text-zinc-900 dark:text-zinc-50'
+                                  }`}
+                                >
+                                  {item.name}
                                 </span>
+
+                                {item.checked ? (
+                                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                    ✓ Déjà à la maison (exclu du PDF)
+                                  </span>
+                                ) : (
+                                  <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                                    À acheter
+                                  </span>
+                                )}
+
+                                {hasCustomQty && !item.checked && (
+                                  <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800 flex items-center gap-1">
+                                    <Edit2 className="h-2.5 w-2.5" />
+                                    <span>Personnalisé</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Source recipes info */}
+                              {item.recipes_sources.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-zinc-400">
+                                  <span>Recettes :</span>
+                                  {item.recipes_sources.map((s, idx) => (
+                                    <span key={idx} className="font-medium text-zinc-500 dark:text-zinc-400">
+                                      {s.recipe_title}{idx < item.recipes_sources.length - 1 ? ',' : ''}
+                                    </span>
+                                  ))}
+                                </div>
                               )}
                             </div>
+                          </div>
 
-                            {/* Source recipes info */}
-                            {item.recipes_sources.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-zinc-400">
-                                <span>Recettes :</span>
-                                {item.recipes_sources.map((s, idx) => (
-                                  <span key={idx} className="font-medium text-zinc-500 dark:text-zinc-400">
-                                    {s.recipe_title}{idx < item.recipes_sources.length - 1 ? ',' : ''}
+                          {/* Right: Quantity Display & Inline Modifier */}
+                          <div className="flex flex-col sm:items-end shrink-0 pl-8 sm:pl-0">
+                            {isEditing ? (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 bg-zinc-100 p-1.5 rounded-xl dark:bg-zinc-800 border border-emerald-500/50"
+                              >
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editingQtyValue}
+                                  onChange={(e) => setEditingQtyValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveQtyOverride(item.id);
+                                    if (e.key === 'Escape') setEditingItemId(null);
+                                  }}
+                                  placeholder="ex: 2 unités, 500g"
+                                  className="w-28 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleSaveQtyOverride(item.id, e)}
+                                  className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700"
+                                  title="Enregistrer"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+
+                                {hasCustomQty && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleResetQtyOverride(item.id, e)}
+                                    className="h-7 w-7 rounded-lg bg-zinc-200 text-zinc-600 flex items-center justify-center hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300"
+                                    title="Rétablir quantité originale"
+                                  >
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingItemId(null);
+                                  }}
+                                  className="h-7 w-7 rounded-lg text-zinc-400 hover:text-zinc-600 flex items-center justify-center"
+                                  title="Annuler"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col sm:items-end">
+                                {/* Clickable Quantity Chip */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleStartEditQty(item.id, item.display_quantity_str, e)}
+                                  className={`group/qty flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-all ${
+                                    item.checked
+                                      ? 'line-through text-zinc-400'
+                                      : hasCustomQty
+                                      ? 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                                      : 'hover:bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 border border-transparent hover:border-zinc-300'
+                                  }`}
+                                  title="Cliquer pour modifier la quantité à acheter"
+                                >
+                                  <span>Besoin : {item.display_quantity_str}</span>
+                                  <Edit2 className="h-3 w-3 text-zinc-400 opacity-0 group-hover/qty:opacity-100 transition-opacity" />
+                                </button>
+
+                                {/* Admin Packaging Rule Highlight (ex: 1 livre de beurre) */}
+                                {!item.checked && item.purchase_package_label && !hasCustomQty && (
+                                  <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                                    <Package className="h-3 w-3" />
+                                    {item.purchase_package_label}
                                   </span>
-                                ))}
+                                )}
+
+                                {/* Custom item delete */}
+                                {item.is_custom && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveCustomItem(item.id);
+                                    }}
+                                    className="mt-1 text-xs text-rose-500 hover:text-rose-700"
+                                  >
+                                    Supprimer
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
+
                         </div>
-
-                        {/* Quantities & Packaging rule highlight */}
-                        <div className="flex flex-col items-end shrink-0">
-                          {/* Recipe needed amount */}
-                          <span className={`text-xs font-semibold ${item.checked ? 'line-through text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                            Besoin : {item.display_quantity_str}
-                          </span>
-
-                          {/* Admin Packaging Rule Highlight (ex: 1 livre de beurre) */}
-                          {!item.checked && item.purchase_package_label && (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
-                              <Package className="h-3 w-3" />
-                              {item.purchase_package_label}
-                            </span>
-                          )}
-
-                          {/* Custom item delete */}
-                          {item.is_custom && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveCustomItem(item.id);
-                              }}
-                              className="mt-1 text-xs text-rose-500 hover:text-rose-700"
-                            >
-                              Supprimer
-                            </button>
-                          )}
-                        </div>
-
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                 </div>
