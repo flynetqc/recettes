@@ -346,44 +346,74 @@ export default function RecipeDetailPage() {
               </div>
             </div>
 
-            {/* Checklist of ingredients */}
-            <div className="space-y-2 pt-1">
-              {recipe.ingredients.map((ing) => {
-                const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * ratio * 100) / 100 : null;
-                const isChecked = checkedIngredients[ing.id];
+            {/* Checklist of ingredients grouped by section */}
+            <div className="space-y-4 pt-1">
+              {(() => {
+                // Group by section
+                const sectionsMap = new Map<string, typeof recipe.ingredients>();
+                for (const ing of recipe.ingredients) {
+                  const secName = ing.section?.trim() || '';
+                  if (!sectionsMap.has(secName)) sectionsMap.set(secName, []);
+                  sectionsMap.get(secName)!.push(ing);
+                }
 
-                return (
-                  <div
-                    key={ing.id}
-                    onClick={() => toggleCheckIngredient(ing.id)}
-                    className={`flex items-start gap-3 rounded-xl p-2.5 transition-colors cursor-pointer ${
-                      isChecked
-                        ? 'bg-zinc-50 opacity-50 dark:bg-zinc-800/40'
-                        : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      className="mt-0.5 text-emerald-600 shrink-0 focus:outline-none"
-                    >
-                      {isChecked ? (
-                        <CheckSquare className="h-4 w-4 fill-emerald-600 text-white" />
-                      ) : (
-                        <Square className="h-4 w-4 text-zinc-400 hover:text-emerald-600" />
-                      )}
-                    </button>
+                return Array.from(sectionsMap.entries()).map(([secName, sectionIngs]) => (
+                  <div key={secName || 'main'} className="space-y-2">
+                    {secName && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+                          {secName}
+                        </h4>
+                      </div>
+                    )}
 
-                    <div className="flex-1 text-xs">
-                      <span className={`font-semibold ${isChecked ? 'line-through text-zinc-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                        {scaledQty !== null && `${scaledQty} `}
-                        {ing.unit && `${ing.unit} `}
-                        {ing.name}
-                      </span>
-                      <span className="block text-[11px] text-zinc-400">{ing.aisle}</span>
+                    <div className="space-y-1">
+                      {sectionIngs.map((ing) => {
+                        const scaledQty = ing.quantity !== null ? Math.round(ing.quantity * ratio * 100) / 100 : null;
+                        const isChecked = checkedIngredients[ing.id];
+
+                        return (
+                          <div
+                            key={ing.id}
+                            onClick={() => toggleCheckIngredient(ing.id)}
+                            className={`flex items-start gap-3 rounded-xl p-2.5 transition-colors cursor-pointer ${
+                              isChecked
+                                ? 'bg-zinc-50 opacity-50 dark:bg-zinc-800/40'
+                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              className="mt-0.5 text-emerald-600 shrink-0 focus:outline-none"
+                            >
+                              {isChecked ? (
+                                <CheckSquare className="h-4 w-4 fill-emerald-600 text-white" />
+                              ) : (
+                                <Square className="h-4 w-4 text-zinc-400 hover:text-emerald-600" />
+                              )}
+                            </button>
+
+                            <div className="flex-1 text-xs">
+                              <span className={`font-semibold ${isChecked ? 'line-through text-zinc-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                                {scaledQty !== null && `${scaledQty} `}
+                                {ing.unit && `${ing.unit} `}
+                                {ing.name}
+                              </span>
+                              {ing.notes && (
+                                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 italic ml-1">
+                                  ({ing.notes})
+                                </span>
+                              )}
+                              <span className="block text-[11px] text-zinc-400">{ing.aisle}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
 
           </div>
@@ -402,7 +432,12 @@ export default function RecipeDetailPage() {
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 font-black text-xs text-white shadow-md shadow-emerald-600/20">
                     {step.step_number || idx + 1}
                   </div>
-                  <div className="flex-1 pt-1">
+                  <div className="flex-1 pt-1 space-y-1">
+                    {step.title && (
+                      <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400">
+                        {step.title}
+                      </h4>
+                    )}
                     <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
                       {step.instruction}
                     </p>

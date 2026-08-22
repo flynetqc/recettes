@@ -29,6 +29,7 @@ export interface IngredientItem {
   quantity: number | null;
   unit: string;
   aisle: GroceryAisle;
+  section?: string; // e.g. "Salade", "Vinaigrette", "Marinade", "Sauce", "Pâte"
   notes?: string;
 }
 
@@ -36,6 +37,8 @@ export interface StepItem {
   id: string;
   step_number: number;
   instruction: string;
+  section?: string;
+  title?: string;
 }
 
 export interface Recipe {
