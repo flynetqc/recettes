@@ -100,3 +100,11 @@ export interface WeeklyMealPlan {
     checked: boolean;
   }[];
 }
+
+export interface MealPlanArchive {
+  id: string;
+  name: string; // e.g. "Semaine du 21 août 2026"
+  archived_at: string;
+  recipe_ids: string[];
+  servings_multiplier: Record<string, number>;
+}

@@ -300,3 +300,38 @@ export function saveStoredMealPlan(plan: WeeklyMealPlan): void {
     console.error('Failed to save meal plan', e);
   }
 }
+
+// ----------------- MEAL PLAN ARCHIVES (SEMAINES PASSÉES) ----------------- //
+
+const STORAGE_ARCHIVES_KEY = 'recettes_meal_plan_archives_v1';
+
+export function getMealPlanArchives(): import('./types').MealPlanArchive[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem(STORAGE_ARCHIVES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveMealPlanArchive(archive: import('./types').MealPlanArchive): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const archives = getMealPlanArchives();
+    const updated = [archive, ...archives.filter(a => a.id !== archive.id)];
+    localStorage.setItem(STORAGE_ARCHIVES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save meal plan archive', e);
+  }
+}
+
+export function deleteMealPlanArchive(archiveId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const archives = getMealPlanArchives().filter(a => a.id !== archiveId);
+    localStorage.setItem(STORAGE_ARCHIVES_KEY, JSON.stringify(archives));
+  } catch (e) {
+    console.error('Failed to delete meal plan archive', e);
+  }
+}

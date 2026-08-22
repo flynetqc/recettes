@@ -2,8 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Recipe, GroceryAisle, GroceryCompiledItem } from '@/lib/types';
-import { fetchAllRecipes, getStoredMealPlan, saveStoredMealPlan } from '@/lib/supabase';
+import { Recipe, GroceryAisle, GroceryCompiledItem, MealPlanArchive } from '@/lib/types';
+import { 
+  fetchAllRecipes, 
+  getStoredMealPlan, 
+  saveStoredMealPlan,
+  getMealPlanArchives,
+  saveMealPlanArchive,
+  deleteMealPlanArchive
+} from '@/lib/supabase';
 import { getPurchaseRules } from '@/lib/purchase-rules';
 import { compileGroceryList } from '@/lib/grocery-aggregator';
 import { exportGroceryListPdf } from '@/lib/pdf-exporter';
@@ -21,7 +28,12 @@ import {
   Sparkles, 
   Package, 
   Search,
-  RotateCcw
+  RotateCcw,
+  CalendarPlus,
+  History,
+  Archive,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 
 export function GroceryPlanner() {
@@ -39,8 +51,13 @@ export function GroceryPlanner() {
     }
   });
 
-  // Search & add recipe modal state
+  // Modals state
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
+  const [isNewWeekModalOpen, setIsNewWeekModalOpen] = useState(false);
+  const [isArchivesModalOpen, setIsArchivesModalOpen] = useState(false);
+  const [newWeekArchiveName, setNewWeekArchiveName] = useState('');
+  const [archives, setArchives] = useState<MealPlanArchive[]>([]);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // New custom item form state
@@ -50,7 +67,7 @@ export function GroceryPlanner() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load recipes and stored plan
+  // Load recipes, plan and archives
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
@@ -65,7 +82,6 @@ export function GroceryPlanner() {
       setMultipliers(storedPlan.servings_multiplier || {});
       setCustomItems(storedPlan.custom_grocery_items || []);
 
-      // If invalid/deleted IDs were found, clean them in storage
       if (validIds.length !== (storedPlan.selected_recipe_ids || []).length) {
         saveStoredMealPlan({
           ...storedPlan,
@@ -74,6 +90,7 @@ export function GroceryPlanner() {
         window.dispatchEvent(new Event('mealplan-updated'));
       }
 
+      setArchives(getMealPlanArchives());
       setIsLoading(false);
     }
     loadData();
@@ -199,6 +216,58 @@ export function GroceryPlanner() {
 
   const handleResetChecklist = () => {
     setCheckedItemIds({});
+    try {
+      localStorage.removeItem('recettes_checked_items_v1');
+    } catch {}
+  };
+
+  // Open Start New Week Modal with pre-filled default date name
+  const openNewWeekModal = () => {
+    const dateFormatted = new Date().toLocaleDateString('fr-CA', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    setNewWeekArchiveName(`Semaine du ${dateFormatted}`);
+    setIsNewWeekModalOpen(true);
+  };
+
+  // Confirm Start New Week & Archive
+  const handleConfirmNewWeek = () => {
+    // 1. Archive current selected recipes (without custom items, as requested!)
+    if (selectedRecipeIds.length > 0) {
+      const newArchive: MealPlanArchive = {
+        id: `archive-${Date.now()}`,
+        name: newWeekArchiveName.trim() || `Semaine du ${new Date().toISOString().slice(0, 10)}`,
+        archived_at: new Date().toISOString(),
+        recipe_ids: [...selectedRecipeIds],
+        servings_multiplier: { ...multipliers }
+      };
+
+      saveMealPlanArchive(newArchive);
+      setArchives(getMealPlanArchives());
+    }
+
+    // 2. Reset active week completely
+    persistPlan([], {}, []);
+    handleResetChecklist();
+    setIsNewWeekModalOpen(false);
+  };
+
+  // Restore past archived menu
+  const handleRestoreArchive = (archive: MealPlanArchive) => {
+    const existingIds = new Set(allRecipes.map(r => r.id));
+    const validArchiveIds = archive.recipe_ids.filter(id => existingIds.has(id));
+
+    persistPlan(validArchiveIds, archive.servings_multiplier || {}, []);
+    handleResetChecklist();
+    setIsArchivesModalOpen(false);
+  };
+
+  // Delete an archive
+  const handleDeleteArchive = (archiveId: string) => {
+    deleteMealPlanArchive(archiveId);
+    setArchives(getMealPlanArchives());
   };
 
   const selectedRecipesList = allRecipes.filter(r => selectedRecipeIds.includes(r.id));
@@ -210,7 +279,7 @@ export function GroceryPlanner() {
       
       {/* Top Banner */}
       <div className="rounded-3xl border border-emerald-900/10 bg-gradient-to-r from-emerald-600 to-teal-700 p-6 sm:p-8 text-white shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">
               <ShoppingCart className="h-3.5 w-3.5" />
@@ -224,7 +293,35 @@ export function GroceryPlanner() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Action buttons bar */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            
+            {/* Start New Week Button */}
+            <button
+              type="button"
+              onClick={openNewWeekModal}
+              className="flex items-center gap-2 rounded-2xl bg-white/20 border border-white/30 px-3.5 py-3 text-xs sm:text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/30 active:scale-95 transition-all"
+              title="Archiver le menu actuel et démarrer une nouvelle semaine à neuf"
+            >
+              <CalendarPlus className="h-4 w-4 text-emerald-200" />
+              <span>Nouvelle semaine</span>
+            </button>
+
+            {/* View Archives Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setArchives(getMealPlanArchives());
+                setIsArchivesModalOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-2xl bg-white/20 border border-white/30 px-3.5 py-3 text-xs sm:text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/30 active:scale-95 transition-all"
+              title="Consulter l'historique des menus passés"
+            >
+              <History className="h-4 w-4 text-emerald-200" />
+              <span>Archives ({archives.length})</span>
+            </button>
+
+            {/* Add Recipes Button */}
             <button
               type="button"
               onClick={() => setIsRecipePickerOpen(true)}
@@ -234,15 +331,17 @@ export function GroceryPlanner() {
               <span>Recettes au menu ({selectedRecipesList.length})</span>
             </button>
 
+            {/* Export PDF Button */}
             <button
               type="button"
               onClick={handleExportPdf}
               disabled={itemsToBuyCount === 0}
-              className="flex items-center gap-2 rounded-2xl bg-emerald-900/40 border border-white/20 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-900/60 active:scale-95 transition-all disabled:opacity-40"
+              className="flex items-center gap-2 rounded-2xl bg-emerald-950/60 border border-white/20 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-950/80 active:scale-95 transition-all disabled:opacity-40"
             >
               <FileDown className="h-4 w-4" />
-              <span>Exporter en PDF ({itemsToBuyCount} à acheter)</span>
+              <span>Exporter PDF ({itemsToBuyCount})</span>
             </button>
+
           </div>
         </div>
       </div>
@@ -275,12 +374,22 @@ export function GroceryPlanner() {
             <p className="mt-2 text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Aucune recette au menu pour le moment.
             </p>
-            <button
-              onClick={() => setIsRecipePickerOpen(true)}
-              className="mt-3 rounded-xl bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300"
-            >
-              Parcourir mes recettes
-            </button>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => setIsRecipePickerOpen(true)}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm"
+              >
+                + Choisir des recettes
+              </button>
+              {archives.length > 0 && (
+                <button
+                  onClick={() => setIsArchivesModalOpen(true)}
+                  className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                >
+                  📂 Charger un menu archivé
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -543,7 +652,7 @@ export function GroceryPlanner() {
               Ajouter un article libre
             </h3>
             <p className="text-xs text-zinc-500">
-              Essuie-tout, café, savon ou tout autre article hors recette.
+              Essuie-tout, café, savon ou tout autre article hors recette (non conservé lors de l&apos;archivage).
             </p>
 
             <form onSubmit={handleAddCustomItem} className="space-y-3">
@@ -616,9 +725,193 @@ export function GroceryPlanner() {
 
       </div>
 
+      {/* Start New Week Modal */}
+      {isNewWeekModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900 p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <CalendarPlus className="h-5 w-5" />
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                  Démarrer une nouvelle semaine
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsNewWeekModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              {selectedRecipeIds.length > 0 ? (
+                <>
+                  Votre menu actuel ({selectedRecipeIds.length} recettes) sera sauvegardé dans vos <strong>archives</strong> afin de pouvoir être rechargé plus tard. Les articles libres et cases cochées seront réinitialisés.
+                </>
+              ) : (
+                <>
+                  Réinitialisez votre liste pour planifier votre nouvelle semaine.
+                </>
+              )}
+            </p>
+
+            {selectedRecipeIds.length > 0 && (
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Nom de l&apos;archive :
+                </label>
+                <input
+                  type="text"
+                  value={newWeekArchiveName}
+                  onChange={(e) => setNewWeekArchiveName(e.target.value)}
+                  placeholder="ex: Semaine du 21 août 2026"
+                  className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3.5 py-2.5 text-xs font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsNewWeekModalOpen(false)}
+                className="rounded-xl border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmNewWeek}
+                className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow hover:bg-emerald-700 transition-all"
+              >
+                Archiver et repartir à neuf
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archives Modal */}
+      {isArchivesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900 flex flex-col">
+            
+            <div className="flex items-center justify-between border-b border-zinc-200 p-5 dark:border-zinc-800">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <History className="h-5 w-5" />
+                <div>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                    Archives des menus passés ({archives.length})
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Retrouvez vos menus précédents et rechargez-les en un clic.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsArchivesModalOpen(false)}
+                className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {archives.length === 0 ? (
+                <div className="py-12 text-center text-zinc-400">
+                  <Archive className="mx-auto h-12 w-12 opacity-30 mb-2" />
+                  <p className="text-xs font-medium">Aucun menu archivé pour le moment.</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">
+                    Lorsque vous cliquerez sur « Nouvelle semaine », votre menu actif sera automatiquement archivé ici.
+                  </p>
+                </div>
+              ) : (
+                archives.map((arch) => {
+                  const archivedRecipes = allRecipes.filter(r => arch.recipe_ids.includes(r.id));
+
+                  return (
+                    <div
+                      key={arch.id}
+                      className="rounded-2xl border border-zinc-200/80 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-800/40 space-y-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200/60 pb-2 dark:border-zinc-700/60">
+                        <div>
+                          <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-50">
+                            {arch.name}
+                          </h4>
+                          <span className="text-[11px] text-zinc-400">
+                            Archivé le {new Date(arch.archived_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreArchive(arch)}
+                            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700"
+                          >
+                            <span>Charger ce menu</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteArchive(arch.id)}
+                            className="rounded-lg p-1.5 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                            title="Supprimer l'archive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Archived recipes list */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {archivedRecipes.length > 0 ? (
+                          archivedRecipes.map((r) => (
+                            <span
+                              key={r.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 border border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                            >
+                              <Utensils className="h-3 w-3 text-emerald-600" />
+                              <span>{r.title}</span>
+                              {arch.servings_multiplier[r.id] && arch.servings_multiplier[r.id] !== 1 && (
+                                <span className="text-[10px] text-emerald-600 font-bold">
+                                  ({arch.servings_multiplier[r.id]}x)
+                                </span>
+                              )}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-zinc-400 italic">
+                            {arch.recipe_ids.length} recette(s) (non trouvées dans la base actuelle)
+                          </span>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t border-zinc-200 p-4 dark:border-zinc-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsArchivesModalOpen(false)}
+                className="rounded-xl border border-zinc-300 px-5 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                Fermer
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Recipe Picker Modal */}
       {isRecipePickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900 flex flex-col">
             
             {/* Modal Header */}
@@ -716,7 +1009,7 @@ export function GroceryPlanner() {
                 onClick={() => setIsRecipePickerOpen(false)}
                 className="rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white shadow hover:bg-emerald-700"
               >
-                Terminer ({selectedRecipeIds.length} sélectionnées)
+                Terminer ({selectedRecipesList.length} sélectionnées)
               </button>
             </div>
 
