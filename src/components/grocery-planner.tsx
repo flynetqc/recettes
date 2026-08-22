@@ -53,12 +53,23 @@ export function GroceryPlanner() {
     }
   });
 
-  // Quantity Overrides state (allows user to click any item and change its quantity)
-  const [quantityOverrides, setQuantityOverrides] = useState<Record<string, string>>(() => {
+  // Quantity Overrides state: stores numeric value only, preserving the unit of measure intact!
+  const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>(() => {
     if (typeof window === 'undefined') return {};
     try {
       const saved = localStorage.getItem('recettes_qty_overrides_v1');
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      const result: Record<string, number> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'number') {
+          result[k] = v;
+        } else if (typeof v === 'string') {
+          const num = parseFloat(v);
+          if (!isNaN(num)) result[k] = num;
+        }
+      }
+      return result;
     } catch {
       return {};
     }
@@ -192,20 +203,25 @@ export function GroceryPlanner() {
     });
   };
 
-  // Quantity Editing handlers
-  const handleStartEditQty = (itemId: string, currentQtyStr: string, e: React.MouseEvent) => {
+  // Quantity Editing handlers (editing ONLY the numeric quantity, preserving the unit!)
+  const handleStartEditQty = (itemId: string, rawQty: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingItemId(itemId);
-    setEditingQtyValue(quantityOverrides[itemId] || currentQtyStr || '1');
+    const existingVal = quantityOverrides[itemId] !== undefined 
+      ? quantityOverrides[itemId] 
+      : (rawQty > 0 ? rawQty : 1);
+    setEditingQtyValue(String(existingVal));
   };
 
   const handleSaveQtyOverride = (itemId: string, e?: React.MouseEvent | React.FormEvent) => {
     if (e) e.stopPropagation();
-    if (!editingQtyValue.trim()) return;
+    const num = parseFloat(editingQtyValue);
+    if (isNaN(num) || num <= 0) return;
 
+    const cleanNum = Math.round(num * 100) / 100;
     const next = {
       ...quantityOverrides,
-      [itemId]: editingQtyValue.trim()
+      [itemId]: cleanNum
     };
     setQuantityOverrides(next);
     try {
@@ -253,10 +269,30 @@ export function GroceryPlanner() {
           checkedCount++;
         }
 
-        // Apply custom quantity override if set by user
-        if (quantityOverrides[item.id]) {
-          item.display_quantity_str = quantityOverrides[item.id];
-          item.purchase_package_label = `Acheter : ${quantityOverrides[item.id]}`;
+        // Apply custom numeric quantity override while preserving the exact unit of measure!
+        if (quantityOverrides[item.id] !== undefined) {
+          const customNum = quantityOverrides[item.id];
+          const unitStr = item.unit ? ` ${item.unit}` : '';
+          item.raw_quantity = customNum;
+          item.display_quantity_str = `${customNum}${unitStr}`.trim();
+
+          // Recalibrate admin purchase packaging rule with the updated quantity
+          const matchingRule = rules.find(r => 
+            item.name.toLowerCase().includes(r.ingredient_pattern.toLowerCase())
+          );
+
+          if (matchingRule && matchingRule.standard_quantity > 0) {
+            let needed = customNum;
+            if (item.unit.toLowerCase() === 'kg' && matchingRule.standard_unit.toLowerCase() === 'g') {
+              needed = customNum * 1000;
+            } else if (item.unit.toLowerCase() === 'l' && matchingRule.standard_unit.toLowerCase() === 'ml') {
+              needed = customNum * 1000;
+            }
+            const packagesCount = Math.ceil(needed / matchingRule.standard_quantity);
+            item.purchase_package_label = packagesCount > 1
+              ? `Acheter : ${packagesCount}x (${matchingRule.package_label})`
+              : `Acheter : ${matchingRule.package_label}`;
+          }
         }
       }
     }
@@ -569,7 +605,7 @@ export function GroceryPlanner() {
             </div>
 
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              💡 <em>Cochez les ingrédients que vous possédez déjà pour les exclure. Cliquez sur une quantité pour la personnaliser au besoin !</em>
+              💡 <em>Cochez les ingrédients que vous possédez déjà pour les exclure. Cliquez sur une quantité pour modifier le montant à acheter (l&apos;unité de mesure est préservée).</em>
             </p>
           </div>
 
@@ -609,7 +645,7 @@ export function GroceryPlanner() {
                   <div className="space-y-2">
                     {items.map((item) => {
                       const isEditing = editingItemId === item.id;
-                      const hasCustomQty = Boolean(quantityOverrides[item.id]);
+                      const hasCustomQty = quantityOverrides[item.id] !== undefined;
 
                       return (
                         <div
@@ -678,53 +714,89 @@ export function GroceryPlanner() {
                             </div>
                           </div>
 
-                          {/* Right: Quantity Display & Inline Modifier */}
+                          {/* Right: Quantity Display & Inline Modifier with Fixed Unit */}
                           <div className="flex flex-col sm:items-end shrink-0 pl-8 sm:pl-0">
                             {isEditing ? (
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1.5 bg-zinc-100 p-1.5 rounded-xl dark:bg-zinc-800 border border-emerald-500/50"
+                                className="flex items-center gap-1.5 bg-zinc-100 p-1.5 rounded-2xl dark:bg-zinc-800 border border-emerald-500 shadow-md"
                               >
-                                <input
-                                  type="text"
-                                  autoFocus
-                                  value={editingQtyValue}
-                                  onChange={(e) => setEditingQtyValue(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveQtyOverride(item.id);
-                                    if (e.key === 'Escape') setEditingItemId(null);
+                                {/* Quick minus */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = parseFloat(editingQtyValue) || 1;
+                                    const next = Math.max(0.25, Math.round((current - (current > 1 ? 1 : 0.25)) * 100) / 100);
+                                    setEditingQtyValue(String(next));
                                   }}
-                                  placeholder="ex: 2 unités, 500g"
-                                  className="w-28 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                                />
+                                  className="h-7 w-7 rounded-xl bg-white hover:bg-zinc-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center justify-center border border-zinc-200 dark:border-zinc-600"
+                                >
+                                  -
+                                </button>
 
+                                {/* Input + Fixed Unit Badge */}
+                                <div className="flex items-center overflow-hidden rounded-xl border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900 shadow-inner">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0.1"
+                                    autoFocus
+                                    value={editingQtyValue}
+                                    onChange={(e) => setEditingQtyValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleSaveQtyOverride(item.id);
+                                      if (e.key === 'Escape') setEditingItemId(null);
+                                    }}
+                                    className="w-16 px-2 py-1 text-xs font-extrabold text-zinc-900 focus:outline-none dark:text-zinc-50 text-center bg-transparent"
+                                  />
+                                  <span className="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 border-l border-zinc-200 dark:border-zinc-700 select-none">
+                                    {item.unit || 'unité'}
+                                  </span>
+                                </div>
+
+                                {/* Quick plus */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = parseFloat(editingQtyValue) || 1;
+                                    const next = Math.round((current + (current >= 1 ? 1 : 0.25)) * 100) / 100;
+                                    setEditingQtyValue(String(next));
+                                  }}
+                                  className="h-7 w-7 rounded-xl bg-white hover:bg-zinc-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center justify-center border border-zinc-200 dark:border-zinc-600"
+                                >
+                                  +
+                                </button>
+
+                                {/* Save */}
                                 <button
                                   type="button"
                                   onClick={(e) => handleSaveQtyOverride(item.id, e)}
-                                  className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700"
+                                  className="h-7 w-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 shadow-sm"
                                   title="Enregistrer"
                                 >
-                                  <Check className="h-3.5 w-3.5" />
+                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
                                 </button>
 
+                                {/* Reset if customized */}
                                 {hasCustomQty && (
                                   <button
                                     type="button"
                                     onClick={(e) => handleResetQtyOverride(item.id, e)}
-                                    className="h-7 w-7 rounded-lg bg-zinc-200 text-zinc-600 flex items-center justify-center hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300"
+                                    className="h-7 w-7 rounded-xl bg-zinc-200 text-zinc-600 flex items-center justify-center hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300"
                                     title="Rétablir quantité originale"
                                   >
                                     <RotateCcw className="h-3.5 w-3.5" />
                                   </button>
                                 )}
 
+                                {/* Cancel */}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditingItemId(null);
                                   }}
-                                  className="h-7 w-7 rounded-lg text-zinc-400 hover:text-zinc-600 flex items-center justify-center"
+                                  className="h-7 w-7 rounded-xl text-zinc-400 hover:text-zinc-600 flex items-center justify-center"
                                   title="Annuler"
                                 >
                                   <X className="h-3.5 w-3.5" />
@@ -735,15 +807,15 @@ export function GroceryPlanner() {
                                 {/* Clickable Quantity Chip */}
                                 <button
                                   type="button"
-                                  onClick={(e) => handleStartEditQty(item.id, item.display_quantity_str, e)}
-                                  className={`group/qty flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-all ${
+                                  onClick={(e) => handleStartEditQty(item.id, item.raw_quantity, e)}
+                                  className={`group/qty flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold transition-all ${
                                     item.checked
                                       ? 'line-through text-zinc-400'
                                       : hasCustomQty
                                       ? 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
                                       : 'hover:bg-zinc-100 text-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 border border-transparent hover:border-zinc-300'
                                   }`}
-                                  title="Cliquer pour modifier la quantité à acheter"
+                                  title="Cliquer pour modifier le nombre à acheter"
                                 >
                                   <span>Besoin : {item.display_quantity_str}</span>
                                   <Edit2 className="h-3 w-3 text-zinc-400 opacity-0 group-hover/qty:opacity-100 transition-opacity" />
