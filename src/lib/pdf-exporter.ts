@@ -21,32 +21,25 @@ export function exportGroceryListPdf({
   const darkColor: [number, number, number] = [31, 41, 55]; // Gray 800
   const mutedColor: [number, number, number] = [107, 114, 128]; // Gray 500
 
-  // Header Banner
+  // Compact Header Banner
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 210, 24, 'F');
+  doc.rect(0, 0, 210, 13, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('Mes Recettes Gourmandes', 14, 15);
+  doc.text("Liste d'épicerie et menu de la semaine", 14, 8.5);
 
-  doc.setFontSize(10);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   const dateStr = new Date().toLocaleDateString('fr-CA', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
-  doc.text(`Généré le ${dateStr}`, 145, 15);
+  doc.text(`Généré le ${dateStr}`, 145, 8.5);
 
-  let currentY = 32;
-
-  // Title of the list
-  doc.setTextColor(...darkColor);
-  doc.setFontSize(15);
-  doc.setFont('helvetica', 'bold');
-  doc.text(weekTitle, 14, currentY);
-  currentY += 8;
+  let currentY = 20;
 
   // Recipe badges summary
   if (recipeSummary.length > 0) {
