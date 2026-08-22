@@ -156,6 +156,22 @@ export async function deleteRecipe(id: string): Promise<boolean> {
 
   const list = getLocalRecipes().filter(r => r.id !== id);
   saveLocalRecipes(list);
+
+  // Clean up deleted recipe from meal plan as well
+  try {
+    const plan = getStoredMealPlan();
+    if (plan.selected_recipe_ids.includes(id)) {
+      plan.selected_recipe_ids = plan.selected_recipe_ids.filter(rId => rId !== id);
+      delete plan.servings_multiplier[id];
+      saveStoredMealPlan(plan);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('mealplan-updated'));
+      }
+    }
+  } catch (e) {
+    console.error('Error cleaning up meal plan after recipe deletion', e);
+  }
+
   return true;
 }
 
@@ -247,17 +263,9 @@ export function getStoredMealPlan(): WeeklyMealPlan {
   if (typeof window === 'undefined') {
     return {
       week_start_date: new Date().toISOString(),
-      selected_recipe_ids: ['rec-1', 'rec-2'],
-      servings_multiplier: { 'rec-1': 1, 'rec-2': 1 },
-      custom_grocery_items: [
-        {
-          id: 'custom-1',
-          name: 'Essuie-tout et papier parchemin',
-          quantity_str: '1 paquet',
-          aisle: 'Divers',
-          checked: false
-        }
-      ]
+      selected_recipe_ids: [],
+      servings_multiplier: {},
+      custom_grocery_items: []
     };
   }
 
@@ -266,17 +274,9 @@ export function getStoredMealPlan(): WeeklyMealPlan {
     if (!saved) {
       const initial: WeeklyMealPlan = {
         week_start_date: new Date().toISOString(),
-        selected_recipe_ids: ['rec-1', 'rec-2'],
-        servings_multiplier: { 'rec-1': 1, 'rec-2': 1 },
-        custom_grocery_items: [
-          {
-            id: 'custom-1',
-            name: 'Essuie-tout et papier parchemin',
-            quantity_str: '1 paquet',
-            aisle: 'Divers',
-            checked: false
-          }
-        ]
+        selected_recipe_ids: [],
+        servings_multiplier: {},
+        custom_grocery_items: []
       };
       localStorage.setItem(STORAGE_MEALPLAN_KEY, JSON.stringify(initial));
       return initial;

@@ -58,9 +58,22 @@ export function GroceryPlanner() {
       setAllRecipes(recipes);
 
       const storedPlan = getStoredMealPlan();
-      setSelectedRecipeIds(storedPlan.selected_recipe_ids || []);
+      const existingIds = new Set(recipes.map(r => r.id));
+      const validIds = (storedPlan.selected_recipe_ids || []).filter(id => existingIds.has(id));
+
+      setSelectedRecipeIds(validIds);
       setMultipliers(storedPlan.servings_multiplier || {});
       setCustomItems(storedPlan.custom_grocery_items || []);
+
+      // If invalid/deleted IDs were found, clean them in storage
+      if (validIds.length !== (storedPlan.selected_recipe_ids || []).length) {
+        saveStoredMealPlan({
+          ...storedPlan,
+          selected_recipe_ids: validIds
+        });
+        window.dispatchEvent(new Event('mealplan-updated'));
+      }
+
       setIsLoading(false);
     }
     loadData();
@@ -218,7 +231,7 @@ export function GroceryPlanner() {
               className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-md hover:bg-emerald-50 active:scale-95 transition-all"
             >
               <Plus className="h-4 w-4 text-emerald-600" />
-              <span>Recettes au menu ({selectedRecipeIds.length})</span>
+              <span>Recettes au menu ({selectedRecipesList.length})</span>
             </button>
 
             <button
