@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { GroceryAisle } from '@/lib/types';
 import { CommonIngredientItem, searchCommonIngredients } from '@/lib/common-ingredients';
-import { Search, Plus, Sparkles, Check } from 'lucide-react';
+import { Search, Plus, Sparkles, Check, Filter } from 'lucide-react';
 
 interface IngredientComboboxProps {
   value: string;
@@ -19,12 +19,14 @@ export function IngredientCombobox({
   placeholder = 'Nom de l\'ingrédient (ex: Beurre, Oignons, Poulet...)'
 }: IngredientComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [filterMode, setFilterMode] = useState<'aisle' | 'all'>('aisle');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Suggestions filtered by current query
-  const suggestions = searchCommonIngredients(value, 'Tous');
+  // Suggestions filtered by the active aisle (or all if filterMode === 'all' or aisle === 'Divers')
+  const activeAisleFilter = (filterMode === 'aisle' && aisle !== 'Divers') ? aisle : 'Tous';
+  const suggestions = searchCommonIngredients(value, activeAisleFilter);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -106,18 +108,33 @@ export function IngredientCombobox({
         />
         {value.trim() && (
           <span className="absolute right-3 top-2.5 text-[10px] font-bold text-zinc-400 pointer-events-none">
-            ↵ Tab
+            ↵
           </span>
         )}
       </div>
 
       {/* Autocomplete Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-64 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900 animate-in fade-in">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900 animate-in fade-in">
           
-          <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-            <span>Ingrédients québécois suggérés</span>
-            <span className="text-[10px] text-emerald-600 font-normal">Recherche intelligente</span>
+          {/* Header with active category badge & mode toggle */}
+          <div className="px-2 py-1.5 text-[11px] font-bold border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300 truncate">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span className="truncate">
+                {activeAisleFilter === 'Tous' ? 'Tous les rayons' : activeAisleFilter} ({suggestions.length})
+              </span>
+            </div>
+
+            {aisle !== 'Divers' && (
+              <button
+                type="button"
+                onClick={() => setFilterMode(filterMode === 'aisle' ? 'all' : 'aisle')}
+                className="text-[10px] text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 font-semibold underline shrink-0"
+              >
+                {filterMode === 'aisle' ? 'Voir tous' : `Filtrer par ${aisle}`}
+              </button>
+            )}
           </div>
 
           <div className="space-y-0.5 pt-1">
@@ -163,7 +180,14 @@ export function IngredientCombobox({
 
             {suggestions.length === 0 && !value.trim() && (
               <div className="p-3 text-center text-xs text-zinc-400">
-                Tapez le nom d&apos;un ingrédient pour voir les suggestions.
+                Aucun ingrédient dans le rayon {aisle}.
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('all')}
+                  className="block mx-auto mt-1 text-emerald-600 font-bold underline"
+                >
+                  Afficher tous les rayons
+                </button>
               </div>
             )}
           </div>

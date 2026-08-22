@@ -230,14 +230,15 @@ export function searchCommonIngredients(
   filterAisle?: GroceryAisle | 'Tous'
 ): CommonIngredientItem[] {
   const cleanQ = query.toLowerCase().trim();
-  let list = COMMON_QUEBEC_INGREDIENTS;
+  let list = [...COMMON_QUEBEC_INGREDIENTS];
 
-  if (filterAisle && filterAisle !== 'Tous') {
+  if (filterAisle && filterAisle !== 'Tous' && filterAisle !== 'Divers') {
     list = list.filter(item => item.aisle === filterAisle);
   }
 
   if (!cleanQ) {
-    return list.slice(0, 20);
+    // Return all items in alphabetical order without truncating
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   }
 
   // Exact starts-with gets highest priority, followed by contains
@@ -252,6 +253,5 @@ export function searchCommonIngredients(
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
       return a.name.localeCompare(b.name, 'fr');
-    })
-    .slice(0, 15);
+    });
 }
