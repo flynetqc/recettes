@@ -13,6 +13,7 @@ import {
 import { guessAisle } from '@/lib/ocr-parser';
 import { createOrUpdateRecipe, uploadRecipePhoto } from '@/lib/supabase';
 import { StarRating } from './star-rating';
+import { IngredientCombobox } from './ingredient-combobox';
 import { 
   Plus, 
   Trash2, 
@@ -156,6 +157,28 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
       }
     }
 
+    setIngredients(next);
+  };
+
+  const handleComboboxIngredientChange = (
+    index: number,
+    name: string,
+    suggestedAisle?: GroceryAisle,
+    defaultUnit?: string
+  ) => {
+    const next = [...ingredients];
+    next[index].name = name;
+    if (suggestedAisle) {
+      next[index].aisle = suggestedAisle;
+    } else if (name) {
+      const guessed = guessAisle(name);
+      if (guessed !== 'Épicerie & Garde-manger') {
+        next[index].aisle = guessed;
+      }
+    }
+    if (defaultUnit && !next[index].unit) {
+      next[index].unit = defaultUnit;
+    }
     setIngredients(next);
   };
 
@@ -547,15 +570,14 @@ export function RecipeForm({ initialRecipe, isEditing = false, onSuccessRedirect
                 </datalist>
               </div>
 
-              {/* Name */}
-              <div className="flex-1">
-                <input
-                  type="text"
-                  required
-                  placeholder="Nom de l'ingrédient (ex: Beurre doux, Blancs de poulet)"
+              {/* Name with Smart Combobox */}
+              <div className="flex-1 w-full sm:min-w-[220px]">
+                <IngredientCombobox
                   value={ing.name}
-                  onChange={(e) => handleUpdateIngredient(index, 'name', e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
+                  aisle={ing.aisle}
+                  onChange={(name, suggestedAisle, defaultUnit) =>
+                    handleComboboxIngredientChange(index, name, suggestedAisle, defaultUnit)
+                  }
                 />
               </div>
 
